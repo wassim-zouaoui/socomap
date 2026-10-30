@@ -1,0 +1,15 @@
+{
+  "name": "SocoMap — SOCOTEC",
+  "short_name": "SocoMap",
+  "description": "Navigation vers les chantiers SOCOTEC — Agence Casablanca",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A4A93",
+  "theme_color": "#0A4A93",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "admin": "fe4d10d1bb34033b0fc4aca24ec7edef0f07d74f88b96373fa8479ba01f34bad",
+  "acces": "cb1a24fb0ec87ffd128434e4c49aef097e046e0b7fa9dde134af62aa6b5179ba",
+  "maj": "2026-10-30",
+  "projets": [
+    {"name":"Hôtel Hay Hassani","mission":"L + SEI","zone":"Hay Hassani, Casablanca","lat":33.5584,"lng":-7.6764},
+    {"name":"Résidence Anfa Place","mission":"L","zone":"Anfa, Casablanca","lat":33.5920,"lng":-7.6540},
+    {"name":"Centre commercial Maârif","mission":"L + PS","zone":"Maârif, Casablanca","lat":33.5883,"lng":-7.6324},
+    {"name":"Clinique Sidi Maârouf","mission":"L + SEI","zone":"Sidi Maârouf, Casablanca","lat":33.5300,"lng":-7.6450},
+    {"name":"Bureaux Aïn Diab","mission":"L","zone":"Aïn Diab, Casablanca","lat":33.5939,"lng":-7.6900},
+    {"name":"Usine Bouskoura","mission":"L + LE","zone":"Bouskoura","lat":33.4530,"lng":-7.6480},
+    {"name":"Logements Mohammedia","mission":"L","zone":"Mohammedia","lat":33.6860,"lng":-7.3830},
+    {"name":"École Sidi Bernoussi","mission":"SEI","zone":"Sidi Bernoussi, Casablanca","lat":33.6075,"lng":-7.5080}
+  ]
+}

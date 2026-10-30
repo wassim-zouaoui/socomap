@@ -1,0 +1,64 @@
+SOCOMAP — SOCOTEC Agence Casablanca
+====================================
+
+CONTENU
+- index.html    : l'application
+- projets.json  : LA LISTE DES PROJETS partagée par toute l'équipe (+ mot de passe admin chiffré)
+- manifest.json : rend l'app installable sur téléphone
+- sw.js         : démarrage rapide + fonctionnement hors-ligne
+- icon.svg      : icône SocoMap
+
+METTRE L'APP EN LIGNE (0 dh) — GitHub Pages
+1. Crée un compte gratuit sur github.com
+2. New repository -> nom : socomap -> Public -> Create
+3. "Add file" -> "Upload files" -> glisse les 5 fichiers -> Commit
+4. Settings -> Pages -> Source : "Deploy from a branch" -> main / (root) -> Save
+5. Après 1-2 minutes : https://TON-PSEUDO.github.io/socomap/
+6. Android (Chrome) : bouton "Installer" dans l'app, ou menu ⋮ -> "Ajouter à l'écran d'accueil"
+   iPhone (Safari) : Partager -> "Sur l'écran d'accueil"
+
+QUI PEUT FAIRE QUOI
+- Les collègues : consultent les projets, la météo, les itinéraires, ouvrent Waze.
+  Ils ne voient PAS l'onglet "+ Ajouter" ni les boutons "Supprimer".
+- Toi (administrateur) : bouton bouclier en haut -> mot de passe admin -> tu peux
+  ajouter, supprimer et changer le mot de passe.
+
+CODE D'ACCÈS DE L'ÉQUIPE PAR DÉFAUT :  7351
+MOT DE PASSE ADMIN PAR DÉFAUT        :  Socotec2026!
+=> CHANGE LES DEUX DÈS LE PREMIER JOUR : mode admin -> "+ Ajouter"
+   -> "Code d'accès de l'équipe" et "Changer le mot de passe admin"
+   -> puis publie projets.json (étapes ci-dessous).
+   Donne ensuite le code d'accès à tes collègues, de vive voix (pas par mail).
+
+CODE D'ACCÈS
+- C'est TOI qui le fixes (4 à 8 chiffres). Le même code pour toute l'équipe.
+- Pour le changer (ex. quand quelqu'un quitte l'agence) : mode admin -> nouveau code
+  -> publie projets.json. L'ancien code ne marche plus dès la prochaine ouverture.
+- Le clavier change la position des chiffres à chaque ouverture et après chaque erreur :
+  personne ne peut deviner le code en regardant la position de tes doigts.
+- 5 erreurs -> blocage 30 s, puis 60 s, 90 s...
+- L'app se reverrouille seule après 5 minutes en arrière-plan.
+
+PUBLIER TES MODIFICATIONS POUR TOUTE L'ÉQUIPE
+1. En mode admin, ajoute / supprime tes projets (c'est un brouillon sur ton téléphone).
+2. Onglet "+ Ajouter" -> "Télécharger projets.json".
+3. Sur github.com -> ton dépôt socomap -> "Add file" -> "Upload files" -> projets.json -> Commit.
+4. Tout le monde voit la nouvelle liste à la prochaine ouverture de l'app.
+
+POURQUOI C'EST SÛR
+- Le vrai verrou, c'est GitHub : seul le propriétaire du dépôt (toi, avec ton compte
+  et ton mot de passe GitHub) peut modifier projets.json. Même si quelqu'un trouvait le
+  mot de passe admin, il ne changerait que SON téléphone, jamais la liste de l'équipe.
+- Active la double authentification sur ton compte GitHub (Settings -> Password and
+  authentication) : c'est la protection la plus importante.
+- Mot de passe admin : stocké uniquement sous forme chiffrée (SHA-256), 5 essais puis
+  blocage de 60 secondes.
+- Code à 4 chiffres : protège l'ouverture de l'app sur chaque téléphone.
+
+ATTENTION CONFIDENTIALITÉ
+- Dépôt GitHub public = la liste des projets (noms + positions) est lisible par
+  quiconque connaît l'adresse. Si les projets sont confidentiels, garde des noms
+  neutres (ex. "Projet H-24") ou on passera plus tard à une solution privée.
+
+CARPLAY
+- Bouton "Waze" -> Waze s'ouvre et prend le relais dans CarPlay / Android Auto.

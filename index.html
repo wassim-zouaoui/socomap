@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0A4A93">
+<title>SocoMap</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF4FB; --surface:#FFFFFF; --surface-2:#F4F8FD; --glass:rgba(255,255,255,.72);
+    --fg:#0B2746; --muted:#5A7290; --line:#D8E4F2;
+    --accent:#0B63C4; --accent-2:#0A4A93; --accent-soft:#E2EEFB; --cyan:#13A9D1;
+    --ok:#17886A; --warn:#D9822B; --danger:#D23B3B;
+    --f-d:"Archivo",system-ui,sans-serif; --f-b:"IBM Plex Sans",system-ui,sans-serif; --f-m:"IBM Plex Mono",monospace;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#071320; --surface:#0E2033; --surface-2:#0B1A2A; --glass:rgba(14,32,51,.72);
+    --fg:#E6EFFA; --muted:#8CA4BF; --line:#1E3550;
+    --accent:#3E8DE0; --accent-2:#0A4A93; --accent-soft:#122A42; --cyan:#2CC4E8;
+    color-scheme:dark;
+  }}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--f-b);display:flex;flex-direction:column;overflow:hidden}
+  .hidden{display:none!important}
+
+  /* ---- Lock screen ---- */
+  #lock{position:fixed;inset:0;z-index:100;background:
+     radial-gradient(120% 90% at 50% 0%,#0B63C4 0%,#0A3C77 45%,#061E3B 100%);
+     color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+     padding:24px}
+  .scan{position:relative;width:118px;height:118px;border-radius:50%;
+     border:2px solid rgba(255,255,255,.25);display:grid;place-items:center}
+  .scan::before{content:"";position:absolute;inset:-2px;border-radius:50%;
+     background:conic-gradient(from 0deg,transparent 0 78%,rgba(44,196,232,.9) 92%,transparent);
+     -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);animation:spin 2.4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .scan svg{width:54px;height:54px}
+  .lk-t{font-family:var(--f-d);font-weight:800;letter-spacing:.14em;font-size:1.3rem}
+  .lk-s{color:#AFD2F4;font-size:.82rem;margin-top:6px;letter-spacing:.04em}
+  .pin{display:flex;gap:11px}
+  .pin b{width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);transition:.15s}
+  .pin b.on{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+  .pad{display:grid;grid-template-columns:repeat(3,70px);gap:13px}
+  .pad button{height:70px;border-radius:18px;border:1px solid rgba(255,255,255,.16);
+     background:rgba(255,255,255,.08);color:#fff;font-family:var(--f-d);font-weight:700;font-size:1.5rem;cursor:pointer;transition:.12s}
+  .pad button:active{background:rgba(44,196,232,.35);transform:scale(.95)}
+  .pad .fn{font-size:1.1rem;font-weight:600;color:#AFD2F4}
+  .pad .ok{background:var(--cyan);color:#06263a;border-color:var(--cyan);font-size:1rem;font-weight:800}
+  .lk-hint{font-size:.8rem;color:#AFD2F4;min-height:18px}
+
+  /* ---- Header ---- */
+  header{background:var(--accent-2);color:#fff;flex:none;
+     padding:11px max(14px,env(safe-area-inset-left)) 11px max(14px,env(safe-area-inset-left));
+     box-shadow:0 2px 16px rgba(6,30,59,.25);z-index:20}
+  .brow{display:flex;align-items:center;gap:9px}
+  .mk{width:28px;height:28px;flex:none}
+  .wm{font-family:var(--f-d);font-weight:900;letter-spacing:.12em;font-size:1.04rem}
+  .tg{font-family:var(--f-d);font-weight:700;color:#A9CEF4;font-size:1rem}
+  .sb{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:#90B9E6;margin-top:1px}
+  #install{margin-left:auto;background:var(--cyan);color:#06263a;border:0;border-radius:9px;
+     font-family:var(--f-d);font-weight:700;font-size:.78rem;padding:7px 11px;cursor:pointer;display:none;align-items:center;gap:5px}
+  #lockbtn{margin-left:8px;background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer}
+  .srow{display:flex;gap:7px;margin-top:10px}
+  .sbox{flex:1;display:flex;align-items:center;gap:7px;min-width:0;background:#fff;border-radius:11px;padding:0 12px;height:44px}
+  .sbox svg{flex:none;color:var(--accent)}
+  #q{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:.96rem;color:#0B2746}
+  .mic{flex:none;width:44px;height:44px;border-radius:11px;border:0;background:var(--cyan);color:#06263a;display:grid;place-items:center;cursor:pointer}
+  .mic.live{animation:pl 1.1s infinite}@keyframes pl{50%{opacity:.5}}
+
+  /* ---- Tabs ---- */
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--muted);font-family:var(--f-d);font-weight:700;
+     font-size:.82rem;letter-spacing:.03em;padding:11px 4px;cursor:pointer;border-bottom:2.5px solid transparent}
+  .tabs button.on{color:var(--accent);border-color:var(--accent)}
+
+  /* ---- Map view ---- */
+  #view-map{flex:1;position:relative;min-height:0}
+  #map{position:absolute;inset:0;background:var(--surface-2)}
+  .leaflet-container{font-family:var(--f-b)}
+  .routecard{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:500;
+     background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+     border:1px solid var(--line);border-radius:14px;padding:11px 14px;display:none;align-items:center;gap:12px;
+     box-shadow:0 8px 30px rgba(11,39,70,.18)}
+  .routecard .nm{flex:1;min-width:0;font-family:var(--f-d);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .routecard .mt{font-family:var(--f-m);font-size:.74rem;color:var(--accent)}
+  .routecard .mt b{font-size:.92rem}
+  .rc-go{flex:none;background:var(--accent);color:#fff;border:0;border-radius:10px;height:38px;padding:0 13px;
+     font-family:var(--f-d);font-weight:700;font-size:.82rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+
+  /* ---- List view ---- */
+  #view-list{flex:1;min-height:0;overflow-y:auto;background:var(--bg);
+     padding:12px max(14px,env(safe-area-inset-left)) calc(16px + env(safe-area-inset-bottom))}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:10px;margin-bottom:4px}
+  .chips button{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);
+     border-radius:20px;padding:6px 13px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--f-b)}
+  .chips button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;
+     box-shadow:0 1px 2px rgba(11,39,70,.05);transition:border-color .12s,transform .12s}
+  .card:active{transform:scale(.995)}
+  .card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .ctop{display:flex;justify-content:space-between;gap:9px;align-items:baseline}
+  .pn{font-family:var(--f-d);font-weight:700;font-size:1.04rem;margin:0}
+  .dd{font-family:var(--f-m);font-size:.72rem;color:var(--accent);white-space:nowrap}
+  .mi{display:inline-block;font-family:var(--f-m);font-size:.7rem;color:var(--accent-2);background:var(--accent-soft);padding:2px 8px;border-radius:7px;margin-top:7px}
+  .zn{color:var(--muted);font-size:.84rem;margin-top:8px;display:flex;gap:6px;align-items:flex-start}
+  .gps{font-family:var(--f-m);font-size:.72rem;color:var(--muted);margin-top:4px}
+  .acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+  .acts a,.acts button{display:inline-flex;align-items:center;gap:5px;text-decoration:none;cursor:pointer;
+     height:36px;padding:0 12px;border-radius:9px;font-family:var(--f-d);font-weight:700;font-size:.8rem;border:1px solid var(--line);background:var(--surface-2);color:var(--accent)}
+  .acts .prim{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .acts .wz{background:var(--accent-2);color:#fff;border-color:var(--accent-2)}
+
+  /* ---- Add form ---- */
+  #view-add{flex:1;min-height:0;overflow-y:auto;background:var(--bg);
+     padding:16px max(14px,env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom))}
+  .form{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:13px}
+  .form h2{font-family:var(--f-d);font-weight:800;margin:0 0 4px}
+  label{font-size:.8rem;font-weight:600;color:var(--muted);display:block;margin-bottom:5px}
+  input,select{width:100%;height:44px;border:1px solid var(--line);border-radius:11px;background:var(--surface);
+     color:var(--fg);padding:0 12px;font-family:var(--f-b);font-size:.94rem;outline:0}
+  input:focus,select:focus{border-color:var(--accent)}
+  .two{display:flex;gap:10px}.two>div{flex:1}
+  .btn{height:46px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-family:var(--f-d);font-weight:700;font-size:.95rem;cursor:pointer}
+  .btn.sec{background:var(--surface);color:var(--accent);border:1px solid var(--line)}
+  .note{font-size:.78rem;color:var(--muted);line-height:1.5}
+
+  #toast{position:fixed;left:50%;transform:translateX(-50%) translateY(16px);bottom:calc(74px + env(safe-area-inset-bottom));
+     z-index:60;background:var(--fg);color:var(--bg);padding:11px 16px;border-radius:11px;font-size:.85rem;
+     opacity:0;pointer-events:none;transition:.25s;max-width:86%;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* ---- Météo animée ---- */
+  .mrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+  .mrow .mi{margin-top:0}
+  .wx{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-m);font-weight:600;font-size:.82rem;
+     color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:2px 10px 2px 4px}
+  .wx svg{width:26px;height:26px;overflow:visible;flex:none}
+  .wx small{color:var(--muted);font-weight:500;font-size:.7rem}
+  .wxnote{font-size:.72rem;color:var(--muted);margin:0 2px 10px;display:flex;align-items:center;gap:6px}
+  .wxnote i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(23,136,106,.18);animation:glow 1.6s ease-in-out infinite alternate}
+  .wx-sun .rays{transform-origin:16px 16px;animation:spin 12s linear infinite}
+  .wx-cloud .c{animation:drift 3.5s ease-in-out infinite alternate}
+  .wx-rain .d{animation:drop 1s linear infinite}
+  .wx-rain .d:nth-child(2){animation-delay:.33s}.wx-rain .d:nth-child(3){animation-delay:.66s}
+  .wx-storm .bolt{animation:flash 2.4s infinite}
+  .wx-fog .f{animation:drift 2.8s ease-in-out infinite alternate}
+  .wx-fog .f:nth-child(2){animation-delay:.6s}
+  .wx-moon .m{animation:glow 3s ease-in-out infinite alternate}
+  @keyframes drift{from{transform:translateX(-1.6px)}to{transform:translateX(1.6px)}}
+  @keyframes drop{0%{transform:translateY(-3px);opacity:0}30%{opacity:1}100%{transform:translateY(6px);opacity:0}}
+  @keyframes flash{0%,86%,100%{opacity:.2}88%,93%{opacity:1}}
+  @keyframes glow{from{opacity:.6}to{opacity:1}}
+  .mpin{transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center}
+  .mtemp{font-family:var(--f-m);font-weight:600;font-size:11px;background:#fff;color:#0B2746;border-radius:11px;
+     padding:1px 7px 1px 2px;display:flex;align-items:center;gap:1px;box-shadow:0 2px 8px rgba(11,39,70,.28);margin-bottom:1px;white-space:nowrap}
+  .mtemp svg{width:19px;height:19px;overflow:visible}
+  #rc-wx{margin-top:5px}
+  /* ---- Admin ---- */
+  #adminbtn{margin-left:8px;background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer}
+  #adminbtn.on{background:var(--cyan);color:#06263a}
+  .adm-badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-d);font-weight:700;font-size:.72rem;letter-spacing:.04em;
+     background:var(--accent-soft);color:var(--accent);border-radius:20px;padding:4px 10px}
+  .adm-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .adm-box h3{font-family:var(--f-d);font-size:.95rem;margin:0}
+  .acts .del{color:var(--danger);border-color:var(--line)}
+  .acts .del.arm{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .pending{font-size:.78rem;color:var(--warn);font-weight:600}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ===== Lock ===== -->
+<div id="lock">
+  <div class="scan">
+    <svg viewBox="0 0 32 32"><path d="M16 2C9.9 2 5 6.9 5 13c0 7.2 9.4 15.6 10.4 16.5a1 1 0 0 0 1.3 0C17.6 28.6 27 20.2 27 13 27 6.9 22.1 2 16 2Z" fill="#13A9D1"/><circle cx="16" cy="13" r="4.3" fill="#fff"/></svg>
+  </div>
+  <div style="text-align:center">
+    <div class="lk-t">SOCOMAP</div>
+    <div class="lk-s" id="lk-sub">Entrez votre code</div>
+  </div>
+  <div class="pin" id="pin"></div>
+  <div class="lk-hint" id="lk-hint"></div>
+  <div class="pad" id="pad"></div>
+</div>
+
+<!-- ===== App ===== -->
+<header class="hidden" id="app-h">
+  <div class="brow">
+    <svg class="mk" viewBox="0 0 32 32"><path d="M16 2C9.9 2 5 6.9 5 13c0 7.2 9.4 15.6 10.4 16.5a1 1 0 0 0 1.3 0C17.6 28.6 27 20.2 27 13 27 6.9 22.1 2 16 2Z" fill="#13A9D1"/><circle cx="16" cy="13" r="4.3" fill="#fff"/></svg>
+    <div>
+      <div><span class="wm">SOCOTEC</span> <span class="tg">· SocoMap</span></div>
+      <div class="sb">Navigation chantiers · Casablanca</div>
+    </div>
+    <button id="install">⤓ Installer</button>
+    <button id="adminbtn" title="Espace administrateur"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.5 9.3 8 11 4.5-1.7 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></button>
+    <button id="lockbtn" title="Verrouiller"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+  </div>
+  <div class="srow">
+    <div class="sbox">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" placeholder="Projet… ex. « Hay Hassani »" autocomplete="off">
+    </div>
+    <button class="mic" id="mic" title="Recherche vocale"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+  </div>
+</header>
+
+<div class="tabs hidden" id="app-t">
+  <button data-v="map" class="on">Carte</button>
+  <button data-v="list">Projets</button>
+  <button data-v="add" id="tab-add" class="hidden">+ Ajouter</button>
+</div>
+
+<div id="view-map" class="hidden">
+  <div id="map"></div>
+  <div class="routecard" id="routecard">
+    <div style="min-width:0;flex:1">
+      <div class="nm" id="rc-name"></div>
+      <div class="mt"><b id="rc-dist">—</b> · <b id="rc-time">—</b></div>
+      <div id="rc-wx"></div>
+    </div>
+    <a class="rc-go" id="rc-waze" target="_blank" rel="noopener">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 11l18-8-8 18-2-8-8-2Z"/></svg>Waze</a>
+  </div>
+</div>
+
+<div id="view-list" class="hidden">
+  <div class="wxnote" id="wxnote"><i></i>Météo en direct · chargement…</div>
+  <div class="chips" id="chips"></div>
+  <ul id="list"></ul>
+</div>
+
+<div id="view-add" class="hidden">
+  <div class="form">
+    <span class="adm-badge">● MODE ADMINISTRATEUR</span>
+    <h2>Ajouter un projet</h2>
+    <div><label>Nom du projet</label><input id="f-name" placeholder="ex. Résidence Al Majd"></div>
+    <div><label>Zone / adresse</label><input id="f-zone" placeholder="ex. Sidi Maârouf, Casablanca"></div>
+    <div><label>Mission</label><input id="f-mission" placeholder="ex. L + SEI"></div>
+    <div class="two">
+      <div><label>Latitude</label><input id="f-lat" inputmode="decimal" placeholder="33.5584"></div>
+      <div><label>Longitude</label><input id="f-lng" inputmode="decimal" placeholder="-7.6764"></div>
+    </div>
+    <button class="btn sec" id="f-here">📍 Utiliser ma position actuelle</button>
+    <button class="btn" id="f-save">Enregistrer le projet</button>
+    <p class="note">Pas de coordonnées ? Ouvre le chantier dans Google Maps, appui long sur le point : les deux nombres affichés sont la latitude puis la longitude.</p>
+
+    <div class="adm-box">
+      <h3>Publier pour toute l'équipe</h3>
+      <div class="pending" id="pending"></div>
+      <p class="note" style="margin:0">Tes ajouts et suppressions sont d'abord un brouillon sur ce téléphone. Pour les envoyer à tous : télécharge <b>projets.json</b> puis remplace-le sur GitHub.</p>
+      <button class="btn" id="a-export">⤓ Télécharger projets.json</button>
+      <button class="btn sec" id="a-discard">Annuler mes modifications</button>
+    </div>
+
+    <div class="adm-box">
+      <h3>Code d'accès de l'équipe</h3>
+      <p class="note" style="margin:0">Le code que tes collègues tapent pour ouvrir SocoMap. Le nouveau code s'applique à tout le monde dès que tu publies <b>projets.json</b>.</p>
+      <div><label>Nouveau code (4 à 8 chiffres)</label><input id="a-code" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></div>
+      <button class="btn sec" id="a-setcode">Appliquer (à publier ensuite)</button>
+    </div>
+
+    <div class="adm-box">
+      <h3>Changer le mot de passe admin</h3>
+      <div><label>Nouveau mot de passe (8 caractères min.)</label><input id="a-newpw" type="password" autocomplete="new-password"></div>
+      <button class="btn sec" id="a-setpw">Appliquer (à publier ensuite)</button>
+    </div>
+
+    <button class="btn sec" id="a-logout">Quitter le mode administrateur</button>
+  </div>
+</div>
+
+<div id="view-admin" class="hidden" style="flex:1;min-height:0;overflow-y:auto;background:var(--bg);padding:24px max(14px,env(safe-area-inset-left))">
+  <div class="form">
+    <span class="adm-badge">Espace administrateur</span>
+    <h2>Connexion admin</h2>
+    <p class="note" style="margin:0">Réservé au gestionnaire de SocoMap. Les autres utilisateurs peuvent consulter les projets et naviguer, mais pas les modifier.</p>
+    <div><label>Mot de passe administrateur</label><input id="a-pw" type="password" autocomplete="current-password"></div>
+    <div class="pending" id="a-msg"></div>
+    <button class="btn" id="a-login">Se connecter</button>
+    <button class="btn sec" id="a-cancel">Retour</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ================= Sécurité : code d'accès local ================= */
+/* Code d'accès défini par l'administrateur (dans projets.json), clavier mélangé */
+const DEFAULT_ACCES="cb1a24fb0ec87ffd128434e4c49aef097e046e0b7fa9dde134af62aa6b5179ba";
+const MAXLEN=8,LUKEY="socomap_lockuntil";
+let entry="",lockFails=0,lockUntil=0;
+try{lockUntil=+localStorage.getItem(LUKEY)||0;}catch(_){}
+const lock=document.getElementById("lock"),pinEl=document.getElementById("pin"),padEl=document.getElementById("pad"),
+      lkSub=document.getElementById("lk-sub"),lkHint=document.getElementById("lk-hint");
+function drawDots(){pinEl.innerHTML="";const n=Math.max(4,entry.length);for(let i=0;i<n;i++){const b=document.createElement("b");if(i<entry.length)b.className="on";pinEl.appendChild(b);}}
+function shuffle(a){const r=new Uint32Array(a.length);crypto.getRandomValues(r);for(let i=a.length-1;i>0;i--){const j=r[i]%(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+function buildPad(){
+  const d=shuffle(["0","1","2","3","4","5","6","7","8","9"]);
+  const keys=[...d.slice(0,9),"del",d[9],"ok"];
+  padEl.innerHTML="";
+  keys.forEach(k=>{const b=document.createElement("button");b.type="button";
+    if(k==="del"){b.className="fn";b.dataset.k="del";b.textContent="⌫";b.setAttribute("aria-label","Effacer");}
+    else if(k==="ok"){b.className="fn ok";b.dataset.k="ok";b.textContent="OK";}
+    else b.textContent=k;
+    padEl.appendChild(b);});
+}
+function startLock(){entry="";lkSub.textContent="Code d'accès SOCOTEC";lkHint.textContent="";buildPad();drawDots();lock.classList.remove("hidden");}
+function unlock(){lock.classList.add("hidden");["app-h","app-t","view-map"].forEach(id=>document.getElementById(id).classList.remove("hidden"));setTimeout(()=>map.invalidateSize(),60);}
+padEl.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;const k=b.dataset.k;
+  if(k==="del"){entry=entry.slice(0,-1);drawDots();return;}
+  if(k==="ok"){submitPin();return;}
+  if(entry.length>=MAXLEN)return;entry+=b.textContent;lkHint.textContent="";drawDots();
+});
+async function submitPin(){
+  if(Date.now()<lockUntil){lkHint.textContent=`Trop d'essais. Réessayez dans ${Math.ceil((lockUntil-Date.now())/1000)} s.`;entry="";drawDots();return;}
+  if(entry.length<4){lkHint.textContent="Code trop court (4 chiffres minimum)";return;}
+  if(!crypto.subtle){lkHint.textContent="Ouvrez SocoMap depuis son adresse https://";return;}
+  const ok=await sha("acces:"+entry)===(DATA.acces||DEFAULT_ACCES);
+  entry="";
+  if(ok){lockFails=0;unlock();return;}
+  lockFails++;
+  if(lockFails%5===0){
+    const s=30*(lockFails/5);lockUntil=Date.now()+s*1000;try{localStorage.setItem(LUKEY,""+lockUntil);}catch(_){}
+    lkHint.textContent=`Trop d'essais. Bloqué ${s} s.`;
+  }else lkHint.textContent=`Code incorrect (${5-lockFails%5} essai(s) avant blocage)`;
+  buildPad();drawDots();
+}
+/* Verrouillage automatique après 5 min en arrière-plan */
+let hiddenAt=0;
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){hiddenAt=Date.now();return;}
+  if(hiddenAt&&Date.now()-hiddenAt>5*60*1000&&lock.classList.contains("hidden"))document.getElementById("lockbtn").click();
+});
+document.getElementById("lockbtn").addEventListener("click",()=>{["app-h","app-t","view-map","view-list","view-add","view-admin"].forEach(id=>document.getElementById(id).classList.add("hidden"));startLock();});
+
+/* ================= Données ================= */
+const DEFAULTS=[
+ {name:"Hôtel Hay Hassani",mission:"L + SEI",zone:"Hay Hassani, Casablanca",lat:33.5584,lng:-7.6764},
+ {name:"Résidence Anfa Place",mission:"L",zone:"Anfa, Casablanca",lat:33.5920,lng:-7.6540},
+ {name:"Centre commercial Maârif",mission:"L + PS",zone:"Maârif, Casablanca",lat:33.5883,lng:-7.6324},
+ {name:"Clinique Sidi Maârouf",mission:"L + SEI",zone:"Sidi Maârouf, Casablanca",lat:33.5300,lng:-7.6450},
+ {name:"Bureaux Aïn Diab",mission:"L",zone:"Aïn Diab, Casablanca",lat:33.5939,lng:-7.6900},
+ {name:"Usine Bouskoura",mission:"L + LE",zone:"Bouskoura",lat:33.4530,lng:-7.6480},
+ {name:"Logements Mohammedia",mission:"L",zone:"Mohammedia",lat:33.6860,lng:-7.3830},
+ {name:"École Sidi Bernoussi",mission:"SEI",zone:"Sidi Bernoussi, Casablanca",lat:33.6075,lng:-7.5080},
+];
+/* Liste partagée : projets.json sur le site (modifiable uniquement par le propriétaire du dépôt GitHub) */
+let DATA={admin:null,projets:DEFAULTS};
+const CKEY="socomap_cache",DKEY="socomap_draft";
+try{const c=JSON.parse(localStorage.getItem(CKEY));if(c&&Array.isArray(c.projets))DATA=c;}catch(_){}
+let isAdmin=false;try{isAdmin=sessionStorage.getItem("socomap_admin")==="1";}catch(_){}
+function getDraft(){try{return JSON.parse(localStorage.getItem(DKEY));}catch(_){return null;}}
+function setDraft(d){try{localStorage.setItem(DKEY,JSON.stringify(d));}catch(_){}}
+function editable(){let d=getDraft();if(!d){d=JSON.parse(JSON.stringify(DATA));setDraft(d);}return d;}
+function allProjects(){const d=isAdmin?getDraft():null;return d?d.projets:DATA.projets;}
+async function loadProjects(){
+  try{const r=await fetch("projets.json",{cache:"no-store"});if(!r.ok)throw 0;const j=await r.json();
+    if(j&&Array.isArray(j.projets)){DATA=j;try{localStorage.setItem(CKEY,JSON.stringify(j));}catch(_){}refreshAll();}}catch(_){}
+}
+function refreshAll(){rebuildMarkers();renderChips();renderList();loadWeather();applyAdminUI();}
+let START={lat:33.5731,lng:-7.5898};
+
+/* ================= Carte ================= */
+const map=L.map("map",{zoomControl:true,attributionControl:true}).setView([33.57,-7.62],11);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+const pin=c=>L.divIcon({html:`<div style="transform:translate(-50%,-100%)"><svg width="32" height="32" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Z" fill="${c}"/><circle cx="12" cy="9" r="3" fill="#fff"/></svg></div>`,iconSize:[32,32],className:""});
+let startMarker=L.marker([START.lat,START.lng],{icon:pin("#0B63C4")}).addTo(map).bindPopup("Départ");
+let markers=[],routeLine=null,activeKey=null;
+function rebuildMarkers(){
+  markers.forEach(m=>map.removeLayer(m));markers=[];
+  allProjects().forEach((p,i)=>{const m=L.marker([p.lat,p.lng],{icon:projectPin(p)}).addTo(map).on("click",()=>select(p));markers.push(m);});
+}
+
+/* ================= Météo temps réel (Open-Meteo, gratuit, sans clé) ================= */
+let WX={},WXTIME=null,activeP=null;
+const CLOUD=`<path d="M9 25h14a5 5 0 0 0 .7-9.95A7 7 0 0 0 10.2 17 4 4 0 0 0 9 25Z" fill="#E3ECF7" stroke="#8CA4BF" stroke-width="1.3"/>`;
+function wxIcon(code,day){
+  const sun=`<g class="rays" stroke="#F5A623" stroke-width="2.4" stroke-linecap="round"><path d="M16 3v4M16 25v4M3 16h4M25 16h4M6.8 6.8l2.8 2.8M22.4 22.4l2.8 2.8M6.8 25.2l2.8-2.8M22.4 9.6l2.8-2.8"/></g><circle cx="16" cy="16" r="6" fill="#FFC23D"/>`;
+  const moon=`<path class="m" d="M19 5a11 11 0 1 0 8 16A9 9 0 0 1 19 5Z" fill="#C9D8EE" stroke="#8CA4BF" stroke-width="1"/>`;
+  const svg=(cls,inner)=>`<svg viewBox="0 0 32 32" class="${cls}" aria-hidden="true">${inner}</svg>`;
+  if(code===0)return{svg:day?svg("wx-sun",sun):svg("wx-moon",moon),label:day?"Ensoleillé":"Ciel clair"};
+  if(code<=2)return{svg:svg("wx-cloud",(day?`<circle cx="11" cy="11" r="5.5" fill="#FFC23D"/>`:`<path class="m" d="M12 4a7 7 0 1 0 6 10A6 6 0 0 1 12 4Z" fill="#C9D8EE"/>`)+`<g class="c">${CLOUD}</g>`),label:"Éclaircies"};
+  if(code===3)return{svg:svg("wx-cloud",`<g class="c" transform="translate(-4 -5) scale(.85)" opacity=".7">${CLOUD}</g><g class="c">${CLOUD}</g>`),label:"Couvert"};
+  if(code===45||code===48)return{svg:svg("wx-fog",`<g stroke="#8CA4BF" stroke-width="2.4" stroke-linecap="round"><path class="f" d="M6 12h20"/><path class="f" d="M4 17h22"/><path class="f" d="M7 22h18"/></g>`),label:"Brouillard"};
+  if(code>=95)return{svg:svg("wx-storm",`<g transform="translate(0 -4)">${CLOUD}</g><path class="bolt" d="M17 21l-4 6h3l-1.5 4 5-7h-3l1.5-3Z" fill="#FFC23D"/>`),label:"Orage"};
+  if((code>=71&&code<=77)||code===85||code===86)return{svg:svg("wx-rain",`<g transform="translate(0 -4)">${CLOUD}</g><g fill="#8CC8F0"><circle class="d" cx="12" cy="26" r="1.4"/><circle class="d" cx="17" cy="27" r="1.4"/><circle class="d" cx="22" cy="26" r="1.4"/></g>`),label:"Neige"};
+  return{svg:svg("wx-rain",`<g transform="translate(0 -4)">${CLOUD}</g><g stroke="#2B8FE0" stroke-width="2" stroke-linecap="round"><path class="d" d="M12 24l-1 3"/><path class="d" d="M17 25l-1 3"/><path class="d" d="M22 24l-1 3"/></g>`),label:code>=80?"Averses":"Pluie"};
+}
+function wxBadge(p,wind){
+  const w=WX[p.name];
+  if(!w)return`<span class="wx"><small style="padding-left:6px">Météo…</small></span>`;
+  const ic=wxIcon(w.code,w.day);
+  return`<span class="wx">${ic.svg}<span>${Math.round(w.t)}°C</span><small>${ic.label}${wind?` · vent ${Math.round(w.wind)} km/h`:""}</small></span>`;
+}
+function projectPin(p){
+  const w=WX[p.name];
+  const top=w?`<div class="mtemp">${wxIcon(w.code,w.day).svg}${Math.round(w.t)}°</div>`:"";
+  return L.divIcon({html:`<div class="mpin">${top}<svg width="32" height="32" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Z" fill="#0A4A93"/><circle cx="12" cy="9" r="3" fill="#fff"/></svg></div>`,iconSize:[32,32],className:""});
+}
+function updateRouteWx(){const el=document.getElementById("rc-wx");if(el)el.innerHTML=activeP?wxBadge(activeP,true):"";}
+async function loadWeather(){
+  const ps=allProjects();if(!ps.length)return;
+  const la=ps.map(p=>p.lat.toFixed(4)).join(","),lo=ps.map(p=>p.lng.toFixed(4)).join(",");
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,weather_code,is_day,wind_speed_10m&timezone=auto`);
+    let j=await r.json();if(!Array.isArray(j))j=[j];
+    j.forEach((d,i)=>{if(d&&d.current)WX[ps[i].name]={t:d.current.temperature_2m,code:d.current.weather_code,day:d.current.is_day,wind:d.current.wind_speed_10m};});
+    WXTIME=new Date();
+    document.getElementById("wxnote").innerHTML=`<i></i>Météo en direct · mise à jour ${WXTIME.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}`;
+    rebuildMarkers();renderList();updateRouteWx();
+  }catch(_){document.getElementById("wxnote").innerHTML=`<i style="background:var(--warn)"></i>Météo indisponible (pas de réseau)`;}
+}
+setInterval(loadWeather,10*60*1000);
+function wazeURL(p){return `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;}
+function mapsURL(p){return `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;}
+const rc=document.getElementById("routecard"),rcN=document.getElementById("rc-name"),rcD=document.getElementById("rc-dist"),rcT=document.getElementById("rc-time"),rcW=document.getElementById("rc-waze");
+
+async function select(p){
+  activeKey=p.name;activeP=p;renderList();switchView("map");updateRouteWx();
+  rc.style.display="flex";rcN.textContent=p.name;rcD.textContent="…";rcT.textContent="…";rcW.href=wazeURL(p);
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  try{
+    const u=`https://router.project-osrm.org/route/v1/driving/${START.lng},${START.lat};${p.lng},${p.lat}?overview=full&geometries=geojson`;
+    const j=await (await fetch(u)).json();
+    if(j.routes&&j.routes[0]){
+      const r=j.routes[0];
+      routeLine=L.geoJSON(r.geometry,{style:{color:"#0B63C4",weight:5,opacity:.85}}).addTo(map);
+      map.fitBounds(routeLine.getBounds(),{padding:[45,45]});
+      rcD.textContent=(r.distance/1000).toFixed(1)+" km";rcT.textContent=Math.round(r.duration/60)+" min";return;
+    }
+  }catch(_){}
+  rcD.textContent="n/d";rcT.textContent="n/d";map.setView([p.lat,p.lng],14);
+}
+
+/* ================= Liste + filtres ================= */
+const listEl=document.getElementById("list"),chipsEl=document.getElementById("chips"),qEl=document.getElementById("q");
+let filterMission="Tous";
+function haversine(a,b,c,d){const R=6371,r=x=>x*Math.PI/180,dLa=r(c-a),dLn=r(d-b),h=Math.sin(dLa/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLn/2)**2;return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
+function fmt(km){return km<1?Math.round(km*1000)+" m":km.toFixed(km<10?1:0)+" km";}
+function missions(){const s=new Set();allProjects().forEach(p=>p.mission.split("+").forEach(m=>s.add(m.trim())));return ["Tous",...s];}
+function renderChips(){chipsEl.innerHTML="";missions().forEach(m=>{const b=document.createElement("button");b.textContent=m;b.className=m===filterMission?"on":"";b.onclick=()=>{filterMission=m;renderChips();renderList();};chipsEl.appendChild(b);});}
+function renderList(){
+  const term=qEl.value.trim().toLowerCase();
+  let items=allProjects().map(p=>({...p,d:START?haversine(START.lat,START.lng,p.lat,p.lng):null}));
+  if(term)items=items.filter(p=>(p.name+" "+p.zone+" "+p.mission).toLowerCase().includes(term));
+  if(filterMission!=="Tous")items=items.filter(p=>p.mission.toLowerCase().includes(filterMission.toLowerCase()));
+  items.sort((a,b)=>a.d-b.d);
+  listEl.innerHTML="";
+  if(!items.length){listEl.innerHTML=`<li style="color:var(--muted);text-align:center;padding:30px">Aucun projet.</li>`;return;}
+  items.forEach(p=>{
+    const li=document.createElement("li");li.className="card"+(p.name===activeKey?" active":"");
+    li.innerHTML=`<div class="ctop"><h2 class="pn">${p.name}</h2>${p.d!=null?`<span class="dd">${fmt(p.d)}</span>`:""}</div>
+      <div class="mrow"><span class="mi">Mission ${p.mission}</span>${wxBadge(p)}</div>
+      <div class="zn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top:2px;flex:none"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span>${p.zone}</span></div>
+      <div class="gps">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div>
+      <div class="acts">
+        <button class="prim act-route"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19V7a3 3 0 0 1 3-3h7M20 5v12a3 3 0 0 1-3 3H10"/><path d="m8 15-4 4 4 4" transform="translate(0 -11)"/></svg>Itinéraire</button>
+        <a class="wz" href="${wazeURL(p)}" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 11l18-8-8 18-2-8-8-2Z"/></svg>Waze</a>
+        <a href="${mapsURL(p)}" target="_blank" rel="noopener">Maps</a>
+        <button class="act-copy">Copier GPS</button>
+        ${isAdmin?`<button class="del">Supprimer</button>`:""}
+      </div>`;
+    const del=li.querySelector(".del");
+    if(del)del.onclick=e=>{e.stopPropagation();
+      if(!del.classList.contains("arm")){del.classList.add("arm");del.textContent="Confirmer ?";setTimeout(()=>{del.classList.remove("arm");del.textContent="Supprimer";},3000);return;}
+      const d=editable();d.projets=d.projets.filter(x=>x.name!==p.name);setDraft(d);refreshAll();toast("Projet supprimé (brouillon)");};
+    li.querySelector(".act-route").onclick=e=>{e.stopPropagation();select(p);};
+    li.querySelector(".act-copy").onclick=e=>{e.stopPropagation();navigator.clipboard?.writeText(`${p.lat},${p.lng}`).then(()=>toast("Coordonnées copiées")).catch(()=>toast(`${p.lat},${p.lng}`));};
+    li.onclick=()=>select(p);
+    listEl.appendChild(li);
+  });
+}
+qEl.addEventListener("input",renderList);
+
+/* ================= Vues ================= */
+function switchView(v){
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  if(v==="add"&&!isAdmin)v="admin";
+  ["map","list","add","admin"].forEach(x=>document.getElementById("view-"+x).classList.toggle("hidden",x!==v));
+  if(v==="map")setTimeout(()=>map.invalidateSize(),60);
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>switchView(b.dataset.v));
+
+/* ================= Ajout projet ================= */
+document.getElementById("f-here").onclick=()=>{
+  if(!navigator.geolocation)return toast("Géolocalisation indisponible");
+  navigator.geolocation.getCurrentPosition(pos=>{document.getElementById("f-lat").value=pos.coords.latitude.toFixed(5);document.getElementById("f-lng").value=pos.coords.longitude.toFixed(5);toast("Position récupérée");},()=>toast("Position refusée / indisponible"));
+};
+document.getElementById("f-save").onclick=()=>{
+  const name=document.getElementById("f-name").value.trim(),zone=document.getElementById("f-zone").value.trim(),
+        mission=document.getElementById("f-mission").value.trim()||"L",
+        lat=parseFloat(document.getElementById("f-lat").value),lng=parseFloat(document.getElementById("f-lng").value);
+  if(!isAdmin)return toast("Réservé à l'administrateur");
+  if(!name||isNaN(lat)||isNaN(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return toast("Nom et coordonnées valides requis");
+  const d=editable();
+  if(d.projets.some(x=>x.name.toLowerCase()===name.toLowerCase()))return toast("Un projet porte déjà ce nom");
+  d.projets.push({name,zone:zone||"—",mission,lat,lng});setDraft(d);
+  ["f-name","f-zone","f-mission","f-lat","f-lng"].forEach(id=>document.getElementById(id).value="");
+  refreshAll();toast("Projet ajouté (brouillon, à publier)");switchView("list");
+};
+
+/* ================= Administration ================= */
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("socomap:"+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");}
+let fails=0,blockUntil=0;
+const $=id=>document.getElementById(id);
+function applyAdminUI(){
+  $("tab-add").classList.toggle("hidden",!isAdmin);
+  $("adminbtn").classList.toggle("on",isAdmin);
+  const d=getDraft();
+  const changed=d&&JSON.stringify(d)!==JSON.stringify(DATA);
+  $("pending").textContent=changed?`● Modifications non publiées (${d.projets.length} projets dans le brouillon)`:"Aucune modification en attente.";
+}
+$("adminbtn").onclick=()=>switchView(isAdmin?"add":"admin");
+$("a-cancel").onclick=()=>switchView("map");
+$("a-login").onclick=async()=>{
+  const msg=$("a-msg");
+  if(Date.now()<blockUntil)return msg.textContent=`Trop d'essais. Réessaie dans ${Math.ceil((blockUntil-Date.now())/1000)} s.`;
+  const pw=$("a-pw").value;$("a-pw").value="";
+  if(!crypto.subtle)return msg.textContent="Connexion admin possible uniquement sur le site en HTTPS.";
+  if(DATA.admin&&await sha(pw)===DATA.admin){
+    isAdmin=true;fails=0;msg.textContent="";try{sessionStorage.setItem("socomap_admin","1");}catch(_){}
+    refreshAll();switchView("add");toast("Mode administrateur activé");
+  }else{
+    fails++;if(fails>=5){blockUntil=Date.now()+60000;fails=0;msg.textContent="Trop d'essais. Bloqué 60 s.";}
+    else msg.textContent=`Mot de passe incorrect (${5-fails} essai(s) restant(s)).`;
+  }
+};
+$("a-logout").onclick=()=>{isAdmin=false;try{sessionStorage.removeItem("socomap_admin");}catch(_){}refreshAll();switchView("map");toast("Mode administrateur fermé");};
+$("a-discard").onclick=()=>{try{localStorage.removeItem(DKEY);}catch(_){}refreshAll();toast("Brouillon annulé");};
+$("a-setcode").onclick=async()=>{
+  const c=$("a-code").value.trim();
+  if(!/^\d{4,8}$/.test(c))return toast("Le code doit faire 4 à 8 chiffres");
+  if(/^(\d)\1+$/.test(c)||"0123456789".includes(c)||"9876543210".includes(c))return toast("Code trop simple (évite 1111, 1234…)");
+  const d=editable();d.acces=await sha("acces:"+c);setDraft(d);$("a-code").value="";applyAdminUI();
+  toast("Nouveau code prêt : publie projets.json pour l'activer");
+};
+$("a-setpw").onclick=async()=>{
+  const pw=$("a-newpw").value;if(pw.length<8)return toast("8 caractères minimum");
+  const d=editable();d.admin=await sha(pw);setDraft(d);$("a-newpw").value="";applyAdminUI();
+  toast("Nouveau mot de passe prêt : publie projets.json pour l'activer");
+};
+$("a-export").onclick=()=>{
+  const d=getDraft()||DATA;d.maj=new Date().toISOString().slice(0,10);
+  const txt=JSON.stringify(d,null,2);
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"application/json"}));a.download="projets.json";document.body.appendChild(a);a.click();a.remove();toast("projets.json téléchargé : remplace-le sur GitHub");}
+  catch(_){navigator.clipboard?.writeText(txt).then(()=>toast("Contenu copié dans le presse-papiers"));}
+};
+
+/* ================= Voix ================= */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition,mic=document.getElementById("mic");
+mic.onclick=()=>{
+  if(!SR)return toast("Commande vocale indisponible sur ce navigateur");
+  const rec=new SR();rec.lang="fr-FR";mic.classList.add("live");
+  rec.onresult=e=>{qEl.value=e.results[0][0].transcript.replace(/[.?!]$/,"");switchView("list");renderList();
+    const m=allProjects().find(p=>p.name.toLowerCase().includes(qEl.value.toLowerCase()));if(m)select(m);};
+  rec.onend=()=>mic.classList.remove("live");rec.onerror=()=>{mic.classList.remove("live");toast("Micro indisponible");};
+  rec.start();
+};
+
+/* ================= Position ================= */
+if(navigator.geolocation){navigator.geolocation.getCurrentPosition(pos=>{
+  START={lat:pos.coords.latitude,lng:pos.coords.longitude};
+  map.removeLayer(startMarker);startMarker=L.marker([START.lat,START.lng],{icon:pin("#0B63C4")}).addTo(map).bindPopup("Ma position");
+  renderList();
+},()=>{},{timeout:6000});}
+
+/* ================= PWA ================= */
+let deferred=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;const b=document.getElementById("install");b.style.display="inline-flex";b.onclick=async()=>{deferred.prompt();await deferred.userChoice;deferred=null;b.style.display="none";};});
+if("serviceWorker"in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{});}
+
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),2800);}
+
+/* init */
+refreshAll();startLock();loadProjects();
+</script>
+</body>
+</html>
